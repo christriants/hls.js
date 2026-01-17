@@ -469,17 +469,34 @@ export default class ErrorController
       case NetworkErrorAction.DoNothing:
         break;
       case NetworkErrorAction.SendAlternateToPenaltyBox:
-        this.sendAlternateToPenaltyBox(data);
-        if (
-          !data.errorAction.resolved &&
-          data.details !== ErrorDetails.FRAG_GAP
-        ) {
-          data.fatal = true;
-        } else if (/MediaSource readyState: ended/.test(data.error.message)) {
-          this.warn(
-            `MediaSource ended after "${data.sourceBufferName}" sourceBuffer append error. Attempting to recover from media error.`,
+        {
+          this.sendAlternateToPenaltyBox(data);
+
+          const isMediaSourceEnded = /MediaSource readyState: ended/.test(
+            data.error.message,
           );
-          this.hls.recoverMediaError();
+          const isMediaSourceClosed =
+            data.details === ErrorDetails.MEDIA_SOURCE_CLOSED ||
+            isMediaSourceEnded;
+          data.details === ErrorDetails.MEDIA_SOURCE_CLOSED ||
+            isMediaSourceEnded;
+          const isFragGap = data.details === ErrorDetails.FRAG_GAP;
+          if (
+            !data.errorAction.resolved &&
+            !isMediaSourceClosed &&
+            !isFragGap
+          ) {
+            data.fatal = true;
+            break;
+          }
+          if (isMediaSourceClosed) {
+            const reason =
+              data.details === ErrorDetails.MEDIA_SOURCE_CLOSED
+                ? 'MediaSource closed unexpectedly'
+                : `MediaSource ended after "${data.sourceBufferName}" sourceBuffer append error`;
+            this.warn(`${reason}. Attempting to recover from media error.`);
+            this.hls.recoverMediaError();
+          }
         }
         break;
       case NetworkErrorAction.RetryRequest:

@@ -1,5 +1,9 @@
 import BufferOperationQueue from './buffer-operation-queue';
-import { createDoNothingErrorAction } from './error-controller';
+import {
+  createDoNothingErrorAction,
+  ErrorActionFlags,
+  NetworkErrorAction,
+} from './error-controller';
 import { ErrorDetails, ErrorTypes } from '../errors';
 import { Events } from '../events';
 import { ElementaryStreamTypes } from '../loader/fragment';
@@ -1579,10 +1583,17 @@ transfer tracks: ${stringify(transferredTracks, (key, value) => (key === 'initSe
     // When the user navigates back, the MediaSource is in a 'closed' state and cannot be used.
     // If sourceclose fires while media is still attached, trigger recovery to reattach media.
     if (this.media) {
-      this.warn(
-        'MediaSource closed while media attached - triggering recovery',
-      );
-      this.hls.recoverMediaError();
+      this.warn('MediaSource closed while media attached');
+      this.hls.trigger(Events.ERROR, {
+        type: ErrorTypes.MEDIA_ERROR,
+        details: ErrorDetails.MEDIA_SOURCE_CLOSED,
+        fatal: false,
+        error: new Error('MediaSource closed while media is still attached'),
+        errorAction: {
+          action: NetworkErrorAction.SendAlternateToPenaltyBox,
+          flags: ErrorActionFlags.None,
+        },
+      });
     }
   };
 

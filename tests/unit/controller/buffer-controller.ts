@@ -2,7 +2,9 @@ import chai from 'chai';
 import sinon from 'sinon';
 import sinonChai from 'sinon-chai';
 import BufferController from '../../../src/controller/buffer-controller';
+import { NetworkErrorAction } from '../../../src/controller/error-controller';
 import { FragmentTracker } from '../../../src/controller/fragment-tracker';
+import { ErrorDetails, ErrorTypes } from '../../../src/errors';
 import { Events } from '../../../src/events';
 import Hls from '../../../src/hls';
 import { MockMediaElement, MockMediaSource } from '../utils/mock-media';
@@ -560,23 +562,33 @@ describe('BufferController', function () {
   });
 
   describe('Safari MediaSource bfcache close recovery', function () {
-    it('triggers recoverMediaError when sourceclose fires with media attached', function () {
+    it('emits error when sourceclose fires with media attached', function () {
       const media = new MockMediaElement() as unknown as HTMLMediaElement;
       const mediaSource = new MockMediaSource() as unknown as MediaSource;
-      const recoverMediaErrorSpy = sandbox.spy(hls, 'recoverMediaError');
+      const triggerSpy = sandbox.spy(hls, 'trigger');
       bufferController.media = media;
       bufferController.mediaSource = mediaSource;
       bufferController._onMediaSourceClose();
-      expect(recoverMediaErrorSpy).to.have.been.calledOnce;
+      expect(triggerSpy).to.have.been.calledWith(
+        Events.ERROR,
+        sinon.match({
+          type: ErrorTypes.MEDIA_ERROR,
+          details: ErrorDetails.MEDIA_SOURCE_CLOSED,
+          fatal: false,
+          errorAction: sinon.match({
+            action: NetworkErrorAction.SendAlternateToPenaltyBox,
+          }),
+        }),
+      );
     });
 
-    it('does not trigger recovery when sourceclose fires without media attached', function () {
+    it('does not emit error when media is not attached', function () {
       const mediaSource = new MockMediaSource() as unknown as MediaSource;
-      const recoverMediaErrorSpy = sandbox.spy(hls, 'recoverMediaError');
+      const triggerSpy = sandbox.spy(hls, 'trigger');
       bufferController.media = null;
       bufferController.mediaSource = mediaSource;
       bufferController._onMediaSourceClose();
-      expect(recoverMediaErrorSpy).to.not.have.been.called;
+      expect(triggerSpy).to.not.have.been.calledWith(Events.ERROR);
     });
   });
 });

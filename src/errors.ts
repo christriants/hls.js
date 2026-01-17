@@ -98,6 +98,8 @@ export enum ErrorDetails {
   INTERNAL_ABORTED = 'aborted',
   // Triggered when attachMedia fails
   ATTACH_MEDIA_ERROR = 'attachMediaError',
+  // Triggered when MediaSource is closed while media is still attached
+  MEDIA_SOURCE_CLOSED = 'mediaSourceClosed',
   // Uncategorized error
   UNKNOWN = 'unknown',
 }
