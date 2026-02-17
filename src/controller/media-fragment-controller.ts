@@ -55,18 +55,21 @@ export default class MediaFragmentController
     event: Events.MANIFEST_LOADING,
     data: ManifestLoadingData,
   ) {
+    // Reset state at top, before early return
+    this.fragmentEnd = null;
+    this.endReached = false;
+    this.detachMediaListeners();
     if (!data.url.includes('#')) {
       return;
     }
     const { temporalFragment } = parseMediaFragment(data.url);
-    this.fragmentEnd = null;
-    this.endReached = false;
-    this.detachMediaListeners();
     if (temporalFragment) {
       if (temporalFragment.start !== undefined) {
         this.hls.config.startPosition = temporalFragment.start;
       }
-      this.fragmentEnd = temporalFragment.end ?? null;
+      if (temporalFragment.end !== undefined) {
+        this.fragmentEnd = temporalFragment.end;
+      }
       this.hls.trigger(Events.MEDIA_FRAGMENT_PARSED, {
         start: temporalFragment.start,
         end: temporalFragment.end,
