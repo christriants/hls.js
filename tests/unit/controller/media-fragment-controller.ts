@@ -17,7 +17,7 @@ describe('MediaFragmentController', function () {
     hls.destroy();
   });
 
-  describe('parseMediaFragment', function () {
+  describe('fragment parsing and event triggering', function () {
     it('should parse start and end times', function () {
       const triggerSpy = sinon.spy(hls, 'trigger');
       hls.trigger(Events.MANIFEST_LOADING, {
@@ -50,9 +50,55 @@ describe('MediaFragmentController', function () {
         sinon.match({ start: undefined, end: 20 }),
       );
     });
+
+    it('should handle percent-encoded fragment values', function () {
+      const triggerSpy = sinon.spy(hls, 'trigger');
+      // %31%30 = "10", %32%30 = "20"
+      hls.trigger(Events.MANIFEST_LOADING, {
+        url: 'http://example.com/playlist.m3u8#t=%31%30,%32%30',
+      });
+      expect(triggerSpy).to.have.been.calledWith(
+        Events.MEDIA_FRAGMENT_PARSED,
+        sinon.match({ start: 10, end: 20 }),
+      );
+    });
+
+    it('should handle percent-encoded comma in fragment', function () {
+      const triggerSpy = sinon.spy(hls, 'trigger');
+      // %2C = ","
+      hls.trigger(Events.MANIFEST_LOADING, {
+        url: 'http://example.com/playlist.m3u8#t=10%2C20',
+      });
+      expect(triggerSpy).to.have.been.calledWith(
+        Events.MEDIA_FRAGMENT_PARSED,
+        sinon.match({ start: 10, end: 20 }),
+      );
+    });
+
+    it('should handle percent-encoded npt prefix', function () {
+      const triggerSpy = sinon.spy(hls, 'trigger');
+      hls.trigger(Events.MANIFEST_LOADING, {
+        url: 'http://example.com/playlist.m3u8#t=%6ept%3a15,25',
+      });
+      expect(triggerSpy).to.have.been.calledWith(
+        Events.MEDIA_FRAGMENT_PARSED,
+        sinon.match({ start: 15, end: 25 }),
+      );
+    });
+
+    it('should ignore fragments with invalid percent-encoding', function () {
+      const triggerSpy = sinon.spy(hls, 'trigger');
+      hls.trigger(Events.MANIFEST_LOADING, {
+        url: 'http://example.com/playlist.m3u8#t=%xy,20',
+      });
+      expect(triggerSpy).to.not.have.been.calledWith(
+        Events.MEDIA_FRAGMENT_PARSED,
+        sinon.match.any,
+      );
+    });
   });
 
-  describe('startPosition', function () {
+  describe('startPosition configuration', function () {
     it('should set config.startPosition from fragment start', function () {
       hls.trigger(Events.MANIFEST_LOADING, {
         url: 'http://example.com/playlist.m3u8#t=10,20',
@@ -62,7 +108,7 @@ describe('MediaFragmentController', function () {
     });
   });
 
-  describe('end position handling', function () {
+  describe('fragment end playback control', function () {
     let media: HTMLVideoElement;
 
     beforeEach(function () {

@@ -62,7 +62,17 @@ export default class MediaFragmentController
     if (!data.url.includes('#')) {
       return;
     }
-    const { temporalFragment } = parseMediaFragment(data.url);
+    const hashIndex = data.url.indexOf('#');
+    const fragment = data.url.substring(hashIndex + 1);
+    let decodedFragment: string;
+    try {
+      decodedFragment = decodeURIComponent(fragment);
+    } catch (e) {
+      return;
+    }
+    const { temporalFragment } = parseMediaFragment(
+      data.url.substring(0, hashIndex + 1) + decodedFragment,
+    );
     if (temporalFragment) {
       if (temporalFragment.start !== undefined) {
         this.hls.config.startPosition = temporalFragment.start;
