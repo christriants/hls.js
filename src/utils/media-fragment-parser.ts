@@ -77,9 +77,9 @@ export function parseMediaFragment(
 /**
  * Parse NPT (Normal Play Time) format
  * Supports:
- *   - npt-sec: "10" or "10.5"
- *   - npt-mmss: "02:30" or "02:30.5"
- *   - npt-hhmmss: "1:02:30" or "1:02:30.5"
+ *   - Seconds: "10" or "10.5"
+ *   - MM:SS: "02:30" or "02:30.5"
+ *   - HH:MM:SS: "1:02:30" or "1:02:30.5"
  */
 function parseNptTime(timeStr: string): number | undefined {
   timeStr = timeStr.trim();
@@ -90,26 +90,29 @@ function parseNptTime(timeStr: string): number | undefined {
   if (/^\d+(\.\d+)?$/.test(timeStr)) {
     return parseFloat(timeStr);
   }
-  // Handle npt-hhmmss format: "1:02:30.5"
-  const hhmmss = timeStr.match(/^(\d+):(\d{2}):(\d{2})(\.\d+)?$/);
-  if (hhmmss) {
-    const hours = parseInt(hhmmss[1], 10);
-    const minutes = parseInt(hhmmss[2], 10);
-    const seconds = parseFloat(hhmmss[3] + (hhmmss[4] || ''));
-    if (minutes >= 60 || seconds >= 60) {
-      return undefined;
-    }
-    return hours * 3600 + minutes * 60 + seconds;
-  }
-  // Handle npt-mmss format: "02:30.5"
-  const mmss = timeStr.match(/^(\d{2}):(\d{2})(\.\d+)?$/);
-  if (mmss) {
-    const minutes = parseInt(mmss[1], 10);
-    const seconds = parseFloat(mmss[2] + (mmss[3] || ''));
-    if (minutes >= 60 || seconds >= 60) {
+  const parts = timeStr.split(':');
+  if (parts.length === 2) {
+    // MM:SS format: "02:30" or "02:30.5"
+    const minutes = parseFloat(parts[0]);
+    const seconds = parseFloat(parts[1]);
+    if (isNaN(minutes) || isNaN(seconds) ||
+        minutes < 0 || minutes >= 60 ||
+        seconds < 0 || seconds >= 60) {
       return undefined;
     }
     return minutes * 60 + seconds;
+  }
+  if (parts.length === 3) {
+    // HH:MM:SS format: "1:02:30" or "1:02:30.5"
+    const hours = parseFloat(parts[0]);
+    const minutes = parseFloat(parts[1]);
+    const seconds = parseFloat(parts[2]);
+    if (isNaN(hours) || isNaN(minutes) || isNaN(seconds) ||
+        hours < 0 || minutes < 0 || seconds < 0 ||
+        minutes >= 60 || seconds >= 60) {
+      return undefined;
+    }
+    return hours * 3600 + minutes * 60 + seconds;
   }
   return undefined;
 }
